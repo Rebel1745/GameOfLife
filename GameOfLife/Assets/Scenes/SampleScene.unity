@@ -496,8 +496,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LifeRenderer
   _cellSize: 10
-  _aliveColour: {r: 0.9858491, g: 0.32551622, b: 0.32551622, a: 1}
-  _deadColour: {r: 0.4669811, g: 0.4669811, b: 0.4669811, a: 1}
+  _aliveColour:
+    serializedVersion: 2
+    rgba: 4284703729
+  _deadColour:
+    serializedVersion: 2
+    rgba: 4287985783
 --- !u!114 &666116991
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -513,7 +517,7 @@ MonoBehaviour:
   _width: 50
   _height: 50
   _isRunning: 0
-  _speed: 0.5
+  _speed: 0.1
 --- !u!4 &666116992
 Transform:
   m_ObjectHideFlags: 0

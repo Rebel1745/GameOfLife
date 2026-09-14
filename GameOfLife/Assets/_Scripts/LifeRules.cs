@@ -7,9 +7,9 @@ using UnityEngine;
 public class LifeRules
 {
     // Reusable buffer to avoid garbage collection
-    private readonly int[] _neighborBuffer = new int[16]; // Max 8 neighbors * 2 coords
+    private readonly int[] _neighborBuffer = new int[16]; // Max 8 neighbours * 2 coords
 
-    public void Step(LifeData data, ITopology topology)
+    public void Step(LifeData data, ITopology topology, LifeRule rule)
     {
         data.ClearNextBuffer();
 
@@ -20,20 +20,35 @@ public class LifeRules
                 int currentIndex = data.GetIndex(x, y);
                 byte currentState = data.Cells[currentIndex];
 
-                int neighborCount = topology.GetNeighbors(x, y, _neighborBuffer);
-                int liveNeighbors = CountLiveNeighbors(data, neighborCount);
+                int neighborCount = topology.GetNeighbours(x, y, _neighborBuffer);
+                int liveNeighbours = CountLiveNeighbours(data, neighborCount);
 
                 // Apply B3/S23 Rules
+                // if (currentState == 0)
+                // {
+                //     if (liveNeighbours == 3)
+                //     {
+                //         data.NextCells[currentIndex] = 1;
+                //     }
+                // }
+                // else
+                // {
+                //     if (liveNeighbours == 2 || liveNeighbours == 3)
+                //     {
+                //         data.NextCells[currentIndex] = 1;
+                //     }
+                // }
+                // Apply Rules from the Data Object
                 if (currentState == 0)
                 {
-                    if (liveNeighbors == 3)
+                    if (rule.BirthCounts.Contains(liveNeighbours))
                     {
                         data.NextCells[currentIndex] = 1;
                     }
                 }
                 else
                 {
-                    if (liveNeighbors == 2 || liveNeighbors == 3)
+                    if (rule.SurvivalCounts.Contains(liveNeighbours))
                     {
                         data.NextCells[currentIndex] = 1;
                     }
@@ -44,7 +59,7 @@ public class LifeRules
         data.SwapBuffers();
     }
 
-    private int CountLiveNeighbors(LifeData data, int neighborCount)
+    private int CountLiveNeighbours(LifeData data, int neighborCount)
     {
         int live = 0;
         for (int i = 0; i < neighborCount; i++)

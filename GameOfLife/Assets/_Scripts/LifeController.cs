@@ -16,6 +16,9 @@ public class LifeController : MonoBehaviour
     private ITopology _topology;
     private LifeRenderer _renderer;
 
+    // The Rule Engine
+    private LifeRule _currentRule;
+
     // Timing
     private float _lastTime;
     private bool _isInitialized = false;
@@ -49,6 +52,7 @@ public class LifeController : MonoBehaviour
     void Start()
     {
         InitializeSystems();
+        LoadRules();
         Clear();
         _isInitialized = true;
     }
@@ -74,12 +78,28 @@ public class LifeController : MonoBehaviour
         _renderer.Initialize(_data);
     }
 
+    private void LoadRules()
+    {
+        // In the future, this will be:
+        // string json = File.ReadAllText("Assets/Rules/MyRule.json");
+
+        // For now, let's define a JSON string to test the parser
+        string json = @"{
+            ""RuleString"": ""B1/S7""
+        }";
+
+        _currentRule = JsonUtility.FromJson<LifeRule>(json);
+        _currentRule.Parse(); // Convert string to HashSets
+
+        Debug.Log($"Loaded Rule: {_currentRule.RuleString}");
+    }
+
     // --- Event Handlers ---
 
     private void ToggleSimulation()
     {
         _isRunning = !_isRunning;
-        Debug.Log($"Simulation is now {(_isRunning ? "Running" : "Paused")}");
+        //Debug.Log($"Simulation is now {(_isRunning ? "Running" : "Paused")}");
     }
 
     private void Randomise()
@@ -104,7 +124,7 @@ public class LifeController : MonoBehaviour
 
     private void Step()
     {
-        _rules.Step(_data, _topology);
+        _rules.Step(_data, _topology, _currentRule);
         _renderer.Render(_data);
         _lastTime = Time.time;
     }

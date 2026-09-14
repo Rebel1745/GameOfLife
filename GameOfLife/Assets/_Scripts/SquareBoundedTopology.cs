@@ -9,7 +9,7 @@ public class SquareBoundedTopology : ITopology
         _height = height;
     }
 
-    public int GetNeighbors(int x, int y, int[] outputBuffer)
+    public int GetNeighbours(int x, int y, int[] outputBuffer)
     {
         int count = 0;
         for (int dy = -1; dy <= 1; dy++)
@@ -21,7 +21,7 @@ public class SquareBoundedTopology : ITopology
                 int nx = x + dx;
                 int ny = y + dy;
 
-                if (nx >= 0 && nx < _width && ny >= 0 && ny < _height)
+                if (Contains(nx, ny))
                 {
                     outputBuffer[count * 2] = nx;
                     outputBuffer[count * 2 + 1] = ny;

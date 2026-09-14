@@ -1,9 +1,5 @@
-using UnityEngine;
+using System;
 
-/// <summary>
-/// Pure data container. No Unity dependencies (except Mathf for index math).
-/// This is the "Model" in MVC.
-/// </summary>
 public class LifeData
 {
     public readonly int Width;
@@ -28,13 +24,11 @@ public class LifeData
     public void SwapBuffers()
     {
         // Swap the references. 
-        // 'Cells' becomes the old 'NextCells' (which is now the current state)
-        // 'NextCells' becomes the old 'Cells' (which we will overwrite next frame)
         (Cells, NextCells) = (NextCells, Cells);
     }
 
     public void ClearNextBuffer()
     {
-        System.Array.Clear(NextCells, 0, NextCells.Length);
+        Array.Clear(NextCells, 0, NextCells.Length);
     }
 }

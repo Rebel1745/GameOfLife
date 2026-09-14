@@ -3,22 +3,23 @@ using UnityEngine;
 /// <summary>
 /// Handles drawing the LifeData to the screen.
 /// </summary>
+[RequireComponent(typeof(SpriteRenderer))]
 public class LifeRenderer : MonoBehaviour
 {
     [SerializeField] private int _cellSize = 10;
     public int CellSize => _cellSize;
-    [SerializeField] private Color _aliveColour = Color.white;
-    [SerializeField] private Color _deadColour = Color.black;
+    [SerializeField] private Color32 _aliveColour = Color.white;
+    [SerializeField] private Color32 _deadColour = Color.black;
 
     private Texture2D _texture;
-    private Color[] _colorBuffer;
+    private Color32[] _colorBuffer;
     private SpriteRenderer _sr;
 
     public void Initialize(LifeData data)
     {
         _texture = new Texture2D(data.Width, data.Height, TextureFormat.RGBA32, false);
         _texture.filterMode = FilterMode.Point;
-        _colorBuffer = new Color[data.Width * data.Height];
+        _colorBuffer = new Color32[data.Width * data.Height];
 
         _sr = GetComponent<SpriteRenderer>();
         if (_sr == null)
@@ -37,7 +38,7 @@ public class LifeRenderer : MonoBehaviour
         {
             _colorBuffer[i] = data.Cells[i] == 1 ? _aliveColour : _deadColour;
         }
-        _texture.SetPixels(_colorBuffer);
+        _texture.SetPixels32(_colorBuffer);
         _texture.Apply();
     }
 }
