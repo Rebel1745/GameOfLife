@@ -30,7 +30,7 @@ public class UIManager : MonoBehaviour
         });
 
         stepBtn.onClick.AddListener(_manager.StepOnce);
-        randomBtn.onClick.AddListener(_manager.RandomiseActive);
+        randomBtn.onClick.AddListener(_manager.RandomiseAllTheSame);
         clearBtn.onClick.AddListener(_manager.ClearActive);
 
         addSimBtn.onClick.AddListener(AddNewSimulation);
@@ -43,7 +43,7 @@ public class UIManager : MonoBehaviour
 
     private void AddNewSimulation()
     {
-        string name = string.IsNullOrEmpty(nameInput.text) ? "New Universe" : nameInput.text;
+        string name = nameInput.text;
         string rule = string.IsNullOrEmpty(ruleInput.text) ? "B3/S23" : ruleInput.text;
         _manager.AddSimulation(name, rule);
     }

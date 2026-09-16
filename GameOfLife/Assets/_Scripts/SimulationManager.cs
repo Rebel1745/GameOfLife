@@ -14,16 +14,18 @@ public class SimulationManager : MonoBehaviour
     public int ActiveIndex = 0;
 
     // Layout settings
-    public int Columns = 2;
-    public int Rows = 2;
     public int GridPadding = 10; // Space between universes
-    public Vector2 GridOffset = new Vector2(0, 0); // Center the grid
     [SerializeField] private Color32 _aliveColour = Color.white;
     [SerializeField] private Color32 _deadColour = Color.black;
+    [SerializeField] private Transform _uiControlPanel;
 
     private Camera _mainCamera;
     private bool _isRunning = false;
     private float _lastTime;
+    private int _lastScreenWidth;
+    private int _lastScreenHeight;
+    private float _uiPanelWidthRatio;
+
 
     void Awake()
     {
@@ -40,17 +42,29 @@ public class SimulationManager : MonoBehaviour
         _mainCamera = Camera.main;
         if (_mainCamera == null) _mainCamera = Camera.main;
         _mainCamera.orthographic = true;
+        RecalculateUIRatio();
     }
 
     void Start()
     {
+        // listen for a mouse click
+        InputManager.Instance.OnCellLeftClicked += OnLeftClick;
+
         AddSimulation("Universe 1", "B3/S23");
-        SetActive(0);
         UpdateLayout();
     }
 
     void Update()
     {
+        if (Screen.width != _lastScreenWidth || Screen.height != _lastScreenHeight)
+        {
+            _lastScreenWidth = Screen.width;
+            _lastScreenHeight = Screen.height;
+
+            RecalculateUIRatio();
+            UpdateLayout();
+        }
+
         if (_isRunning && Time.time - _lastTime >= stepSpeed)
         {
             foreach (var sim in _simulations)
@@ -61,11 +75,26 @@ public class SimulationManager : MonoBehaviour
         }
     }
 
+    private void RecalculateUIRatio()
+    {
+        if (_uiControlPanel != null)
+        {
+            RectTransform rect = _uiControlPanel.GetComponent<RectTransform>();
+            // Get width in pixels relative to screen
+            Vector3[] corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            float panelPixelWidth = Mathf.Abs(corners[2].x - corners[0].x); // canvas-space
+            _uiPanelWidthRatio = panelPixelWidth / Screen.width;
+        }
+    }
+
     // --- Public API ---
 
     public void AddSimulation(string name, string ruleString)
     {
-        var newSim = new SimulationInstance(name, defaultWidth, defaultHeight, ruleString, _aliveColour, _deadColour);
+        if (string.IsNullOrWhiteSpace(name)) name = "Universe " + (_simulations.Count + 1);
+
+        var newSim = new SimulationInstance(_simulations.Count, name, defaultWidth, defaultHeight, ruleString, _aliveColour, _deadColour);
         _simulations.Add(newSim);
 
         // Create a GameObject for this simulation to hold the SpriteRenderer
@@ -78,7 +107,7 @@ public class SimulationManager : MonoBehaviour
         // Set initial position
         newSim.SpriteRenderer.transform.localPosition = Vector3.zero;
 
-        ActiveIndex = _simulations.Count - 1;
+        SetActive(_simulations.Count - 1);
         UpdateLayout();
     }
 
@@ -100,7 +129,7 @@ public class SimulationManager : MonoBehaviour
         }
         else if (ActiveIndex >= _simulations.Count)
         {
-            ActiveIndex = _simulations.Count - 1;
+            SetActive(index - 1);
         }
 
         UpdateLayout();
@@ -136,13 +165,46 @@ public class SimulationManager : MonoBehaviour
     public void RandomiseActive()
     {
         if (ActiveIndex >= 0 && ActiveIndex < _simulations.Count)
+        {
             _simulations[ActiveIndex].Randomise();
+        }
+    }
+
+    public void RandomiseAllDifferent()
+    {
+        _isRunning = false;
+
+        foreach (SimulationInstance sim in _simulations)
+            sim.Randomise();
+    }
+
+    public void RandomiseAllTheSame()
+    {
+        if (_simulations.Count == 0 || ActiveIndex > _simulations.Count) return;
+
+        _isRunning = false;
+
+        _simulations[ActiveIndex].Randomise();
+
+        byte[] randomed = _simulations[ActiveIndex].GetCells();
+
+        foreach (SimulationInstance sim in _simulations)
+            sim.SetAllCells(randomed);
+
     }
 
     public void ClearActive()
     {
         if (ActiveIndex >= 0 && ActiveIndex < _simulations.Count)
             _simulations[ActiveIndex].Clear();
+    }
+
+    public void ClearAll()
+    {
+        _isRunning = false;
+
+        foreach (SimulationInstance sim in _simulations)
+            sim.Clear();
     }
 
     public void UpdateRuleForActive(string newRule)
@@ -155,51 +217,73 @@ public class SimulationManager : MonoBehaviour
     }
 
     // --- Layout & Camera ---
-
     private void UpdateLayout()
     {
         if (_simulations.Count == 0) return;
 
-        Columns = Mathf.CeilToInt(Mathf.Sqrt(_simulations.Count));
-        Rows = Mathf.CeilToInt((float)_simulations.Count / Columns);
+        // --- 1. Calculate Grid Dimensions (Content + Gaps) ---
+        int columns = Mathf.CeilToInt(Mathf.Sqrt(_simulations.Count));
+        int rows = Mathf.CeilToInt((float)_simulations.Count / columns);
 
-        // Calculate total grid size
-        int simW = _simulations[0].TextureWidth + GridPadding;
-        int simH = _simulations[0].TextureHeight + GridPadding;
+        int simW = _simulations[0].Data.Width + GridPadding * 2;
+        int simH = _simulations[0].Data.Height + GridPadding * 2;
 
-        float totalWidth = (Columns * simW) - GridPadding;
-        float totalHeight = (Rows * simH) - GridPadding;
+        float totalWidth = columns * simW;
+        float totalHeight = rows * simH;
 
-        // Center the grid
-        float startX = (-totalWidth / 2.0f) + (simW / 2.0f) - GridOffset.x;
-        float startY = (-totalHeight / 2.0f) + (simH / 2.0f) - GridOffset.y;
+        // --- 2. Calculate Camera Zoom (Fit into Effective Viewport) ---
 
+        // We calculate zoom based on the usable space (excluding UI)
+        float effectiveAspect = _mainCamera.aspect * (1.0f - _uiPanelWidthRatio);
+
+        float camSizeForHeight = totalHeight / 2.0f;
+        float camSizeForWidth = (totalWidth / effectiveAspect) / 2.0f;
+
+        float targetOrthoSize = Mathf.Max(camSizeForHeight, camSizeForWidth) * 1.05f;
+
+        // Apply zoom
+        _mainCamera.orthographicSize = targetOrthoSize;
+
+        // Keep camera at screen center (no X shift)
+        _mainCamera.transform.position = new Vector3(0, 0, _mainCamera.transform.position.z);
+
+        // --- 3. Calculate Layout Offset (Shift Universes LEFT) ---
+
+        // The visible area is narrower than the screen. 
+        // The center of the visible area is shifted LEFT by half the UI width.
+        // We must move the entire grid to align with this new center.
+
+        float visibleWorldWidth = targetOrthoSize * 2.0f * _mainCamera.aspect;
+        float uiWorldWidth = visibleWorldWidth * _uiPanelWidthRatio;
+        float layoutOffsetX = -uiWorldWidth / 2.0f; // Shift left
+
+        // Start position for the grid (relative to the new effective center)
+        float startX = (-totalWidth / 2.0f) + (simW / 2.0f) + layoutOffsetX;
+        float startY = (-totalHeight / 2.0f) + (simH / 2.0f);
+
+        // --- 4. Position Universes ---
         int index = 0;
         foreach (var sim in _simulations)
         {
-            int col = index % Columns;
-            int row = index / Columns;
+            int col = index % columns;
+            int row = index / columns;
 
             float x = startX + (col * simW);
             float y = startY + (row * simH);
 
             sim.SpriteRenderer.transform.localPosition = new Vector3(x, y, 0);
-
-            // Update Camera to fit the whole grid
-            float aspect = totalWidth / totalHeight;
-            float camH = totalHeight / 2.0f + 1.0f; // Add 1 unit buffer
-            float camW = camH * aspect;
-
-            _mainCamera.orthographicSize = camH;
-            _mainCamera.transform.position = new Vector3(0, 0, _mainCamera.transform.position.z);
-
             index++;
         }
     }
 
     // --- Interaction ---
 
-    public SimulationInstance GetSimulationAtMouse(Vector2 screenPos)
+    private void OnLeftClick(Vector2 mousePos)
+    {
+        SetActive(GetSimulationAtMouse(mousePos));
+    }
+
+    public int GetSimulationAtMouse(Vector2 screenPos)
     {
         // Get World Position
         Vector3 worldPos = _mainCamera.ScreenToWorldPoint(screenPos);
@@ -231,12 +315,26 @@ public class SimulationManager : MonoBehaviour
 
                 if (sim.Topology.Contains(gx, gy))
                 {
-                    return sim;
+                    return sim.Id;
                 }
             }
         }
-        return null;
+        return -1;
     }
 
-    public bool IsRunning => _isRunning;
+    void OnDrawGizmosSelected()
+    {
+        if (_mainCamera == null) return;
+
+        Gizmos.color = Color.cyan;
+        float halfH = _mainCamera.orthographicSize;
+        float halfW = halfH * _mainCamera.aspect;
+
+        // Effective viewport (excluding UI panel)
+        Gizmos.color = Color.green;
+        float effHalfW = halfW * (1.0f - _uiPanelWidthRatio);
+        Vector3 effCenter = _mainCamera.transform.position
+                          - new Vector3(halfW * _uiPanelWidthRatio, 0, 0);
+        Gizmos.DrawWireCube(effCenter, new Vector3(effHalfW * 2, halfH * 2, 0));
+    }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 public class SimulationInstance
 {
+    public int Id;
     public string Name;
     public LifeData Data;
     public LifeRules Rules;
@@ -16,7 +17,7 @@ public class SimulationInstance
     public Color32[] ColorBuffer;
 
     // Visuals
-    public int Padding = 10; // Pixels of black space around the grid
+    public int _borderWidth = 1;
     public bool IsSelected = false;
     public Color32 _selectionColor = Color.yellow;
     private Color32 _aliveColour;
@@ -25,15 +26,16 @@ public class SimulationInstance
     // Derived dimensions (Texture width = Grid Width + Padding*2)
     public int TextureWidth
     {
-        get => Data.Width + (Padding * 2);
+        get => Data.Width + (_borderWidth * 2);
     }
     public int TextureHeight
     {
-        get => Data.Height + (Padding * 2);
+        get => Data.Height + (_borderWidth * 2);
     }
 
-    public SimulationInstance(string name, int width, int height, string ruleString, Color32 alive, Color32 dead)
+    public SimulationInstance(int id, string name, int width, int height, string ruleString, Color32 alive, Color32 dead)
     {
+        Id = id;
         Name = name;
         Data = new LifeData(width, height);
         Rules = new LifeRules();
@@ -45,17 +47,21 @@ public class SimulationInstance
         _aliveColour = alive;
         _deadColour = dead;
 
+        _borderWidth = Mathf.FloorToInt(width * 0.05f);
+
         InitializeTexture();
     }
 
     private void InitializeTexture()
     {
         // Create texture with padding
-        int tWidth = Data.Width + (Padding * 2);
-        int tHeight = Data.Height + (Padding * 2);
+        int tWidth = Data.Width + (_borderWidth * 2);
+        int tHeight = Data.Height + (_borderWidth * 2);
 
-        Texture = new Texture2D(tWidth, tHeight, TextureFormat.RGBA32, false);
-        Texture.filterMode = FilterMode.Point;
+        Texture = new Texture2D(tWidth, tHeight, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point
+        };
 
         ColorBuffer = new Color32[tWidth * tHeight];
 
@@ -83,8 +89,8 @@ public class SimulationInstance
         }
 
         // 2. Draw the simulation grid (with padding offset)
-        int offsetX = Padding;
-        int offsetY = Padding; // Unity Texture (0,0) is bottom-left
+        int offsetX = _borderWidth;
+        int offsetY = _borderWidth; // Unity Texture (0,0) is bottom-left
 
         for (int y = 0; y < Data.Height; y++)
         {
@@ -114,9 +120,6 @@ public class SimulationInstance
         Texture.SetPixels32(ColorBuffer);
         Texture.Apply();
 
-        // Update Sprite
-        //Sprite.SetTexture(Texture);
-
         // Update UI Label if you have one
         // UpdateLabel();
     }
@@ -124,13 +127,29 @@ public class SimulationInstance
     private void DrawSelectionBorder(int width, int height)
     {
         // Draw Top Border
-        for (int x = 0; x < width; x++) SetPixel(x, height - 1, _selectionColor);
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < _borderWidth; y++)
+                SetPixel(x, height - y - 1, _selectionColor);
+        }
         // Draw Bottom Border
-        for (int x = 0; x < width; x++) SetPixel(x, 0, _selectionColor);
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < _borderWidth; y++)
+                SetPixel(x, y, _selectionColor);
+        }
         // Draw Left Border
-        for (int y = 0; y < height; y++) SetPixel(0, y, _selectionColor);
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < _borderWidth; x++)
+                SetPixel(x, y, _selectionColor);
+        }
         // Draw Right Border
-        for (int y = 0; y < height; y++) SetPixel(width - 1, y, _selectionColor);
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < _borderWidth; x++)
+                SetPixel(width - x - 1, y, _selectionColor);
+        }
     }
 
     private void SetPixel(int x, int y, Color32 color)
@@ -140,6 +159,17 @@ public class SimulationInstance
         {
             ColorBuffer[index] = color;
         }
+    }
+
+    public void SetAllCells(byte[] pixels)
+    {
+        Data.Cells = pixels;
+        Render();
+    }
+
+    public byte[] GetCells()
+    {
+        return Data.Cells;
     }
 
     public void Randomise()

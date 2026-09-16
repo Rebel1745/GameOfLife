@@ -635,18 +635,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SimulationManager
   defaultWidth: 50
   defaultHeight: 50
-  stepSpeed: 0.5
+  stepSpeed: 0.1
   ActiveIndex: 0
-  Columns: 2
-  Rows: 2
-  GridPadding: 10
-  GridOffset: {x: 20, y: 5}
+  GridPadding: 5
   _aliveColour:
     serializedVersion: 2
     rgba: 4294967295
   _deadColour:
     serializedVersion: 2
     rgba: 4278190080
+  _uiControlPanel: {fileID: 1923147896}
 --- !u!1 &312016498
 GameObject:
   m_ObjectHideFlags: 0
@@ -3227,7 +3225,7 @@ GameObject:
   - component: {fileID: 1923147898}
   - component: {fileID: 1923147897}
   m_Layer: 5
-  m_Name: Settings
+  m_Name: ControlPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
