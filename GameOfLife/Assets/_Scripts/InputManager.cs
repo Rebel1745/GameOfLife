@@ -43,19 +43,21 @@ public class InputManager : MonoBehaviour
         _inputActions.Gameplay.Clear.performed += ctx => OnClearRequested?.Invoke();
         _inputActions.Gameplay.Step.performed += ctx => OnStepRequested?.Invoke();
 
-        _inputActions.Gameplay.LeftClick.started += ctx => _isLeftClickHeld = true;
-        _inputActions.Gameplay.LeftClick.canceled += ctx => _isLeftClickHeld = false;
+        _inputActions.Gameplay.LeftClick.performed += ctx => OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
 
-        _inputActions.Gameplay.RightClick.started += ctx => _isRightClickHeld = true;
-        _inputActions.Gameplay.RightClick.canceled += ctx => _isRightClickHeld = false;
+        // _inputActions.Gameplay.LeftClick.started += ctx => _isLeftClickHeld = true;
+        // _inputActions.Gameplay.LeftClick.canceled += ctx => _isLeftClickHeld = false;
+
+        // _inputActions.Gameplay.RightClick.started += ctx => _isRightClickHeld = true;
+        // _inputActions.Gameplay.RightClick.canceled += ctx => _isRightClickHeld = false;
 
         _inputActions.Gameplay.Enable();
     }
 
     private void Update()
     {
-        if (_isLeftClickHeld) OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
-        if (_isRightClickHeld) OnCellRightClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
+        // if (_isLeftClickHeld) OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
+        // if (_isRightClickHeld) OnCellRightClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
     }
 
     void OnDestroy()

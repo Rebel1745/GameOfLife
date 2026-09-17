@@ -14,6 +14,7 @@ public class SimulationInstance
     private LifeRules _rules;
     private ITopology _topology;
     private LifeRule _ruleConfig;
+    public string RuleString => _ruleConfig.RuleString;
 
     // Rendering properties
     private Texture2D _texture;
@@ -86,6 +87,7 @@ public class SimulationInstance
 
     public void Step()
     {
+        Debug.Log(_ruleConfig.RuleString);
         _rules.Step(_data, _topology, _ruleConfig);
         Render(); // Auto-render on step
     }

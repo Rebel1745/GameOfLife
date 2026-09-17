@@ -1,12 +1,13 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Collections;
 
 public class SimulationManager : MonoBehaviour
 {
     public static SimulationManager Instance;
 
-    public event Action<SimulationInstance> OnActiveSimulationChanged;
+    public event Action<int> OnActiveSimulationChanged;
 
     [Header("Defaults")]
     [SerializeField] private int _defaultWidth = 50;
@@ -46,8 +47,7 @@ public class SimulationManager : MonoBehaviour
         // listen for a mouse click
         InputManager.Instance.OnCellLeftClicked += OnLeftClick;
 
-        AddSimulation("Universe 1", "B3/S23");
-        UpdateLayout();
+        StartCoroutine(AddInitialUniverse());
     }
 
     private void Update()
@@ -76,6 +76,14 @@ public class SimulationManager : MonoBehaviour
         InputManager.Instance.OnCellLeftClicked -= OnLeftClick;
     }
 
+    private IEnumerator AddInitialUniverse()
+    {
+        yield return new WaitForSeconds(0.5f);
+
+        AddSimulation("Universe 1", "B3/S23");
+        UpdateLayout();
+    }
+
     private void RecalculateUIRatio()
     {
         if (_uiControlPanel != null)
@@ -102,6 +110,9 @@ public class SimulationManager : MonoBehaviour
 
         SetActive(_simulations.Count - 1);
         UpdateLayout();
+
+        foreach (SimulationInstance sim in _simulations)
+            Debug.Log(sim.Name + " " + sim.RuleString);
     }
 
     public void RemoveSimulation(int index)
@@ -118,7 +129,7 @@ public class SimulationManager : MonoBehaviour
 
         if (_simulations.Count == 0)
         {
-            AddSimulation("Empty", "B3/S23");
+            AddSimulation("Universe 1", "B3/S23");
         }
         else if (_activeIndex >= _simulations.Count)
         {
@@ -142,7 +153,7 @@ public class SimulationManager : MonoBehaviour
         _activeIndex = index;
         _simulations[_activeIndex].SetSelected(true);
 
-        OnActiveSimulationChanged?.Invoke(_simulations[index]);
+        OnActiveSimulationChanged?.Invoke(index);
     }
 
     public void ToggleRunning()
@@ -312,5 +323,20 @@ public class SimulationManager : MonoBehaviour
             }
         }
         return -1;
+    }
+
+    public SimulationInstance GetSimulationFromId(int index)
+    {
+        if (index >= 0 && index < _simulations.Count) return _simulations[index];
+
+        return null;
+    }
+
+    public SimulationInstance GetSimulationFromName(string name)
+    {
+        foreach (SimulationInstance sim in _simulations)
+            if (sim.Name == name) return sim;
+
+        return null;
     }
 }

@@ -23,21 +23,6 @@ public class LifeRules
                 int neighborCount = topology.GetNeighbours(x, y, _neighborBuffer);
                 int liveNeighbours = CountLiveNeighbours(data, neighborCount);
 
-                // Apply B3/S23 Rules
-                // if (currentState == 0)
-                // {
-                //     if (liveNeighbours == 3)
-                //     {
-                //         data.NextCells[currentIndex] = 1;
-                //     }
-                // }
-                // else
-                // {
-                //     if (liveNeighbours == 2 || liveNeighbours == 3)
-                //     {
-                //         data.NextCells[currentIndex] = 1;
-                //     }
-                // }
                 // Apply Rules from the Data Object
                 if (currentState == 0)
                 {

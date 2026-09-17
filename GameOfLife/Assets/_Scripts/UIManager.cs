@@ -1,62 +1,117 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System;
+using System.Linq;
 
 public class UIManager : MonoBehaviour
 {
-    [Header("Control Buttons")]
-    public Button playPauseBtn;
-    public Button stepBtn;
-    public Button randomBtn;
-    public Button clearBtn;
+    [Header("Universe Details UI")]
+    [SerializeField] private TMP_InputField _simulationNameInput;
+    [SerializeField] private TMP_Text _rulesText;
+    [SerializeField] private Toggle[] _birthToggles;
+    [SerializeField] private Toggle[] _survivalToggles;
+    [SerializeField] private Button _addUniverseButton;
+    [SerializeField] private Button _deleteUniverseButton;
+    [SerializeField] private Button _updateUniverseButton;
 
-    [Header("Simulation Management")]
-    public Button addSimBtn;
-    public Button removeSimBtn;
-    public TMP_InputField nameInput;
-    public TMP_InputField ruleInput;
+    private int _activeSimulationId;
 
-    private SimulationManager _manager;
-
-    void Start()
+    private void Start()
     {
-        _manager = SimulationManager.Instance;
+        SimulationManager.Instance.OnActiveSimulationChanged += OnActiveSimulationChanged;
 
-        // Wire up Buttons
-        playPauseBtn.onClick.AddListener(() =>
+        _addUniverseButton.onClick.AddListener(OnAddUniverseButtonClicked);
+        _deleteUniverseButton.onClick.AddListener(OnDeleteUniverseButtonClicked);
+        _updateUniverseButton.onClick.AddListener(OnUpdateUniverseButtonClicked);
+
+        foreach (Toggle t in _birthToggles)
+            t.onValueChanged.AddListener(UpdateRulesText);
+        foreach (Toggle t in _survivalToggles)
+            t.onValueChanged.AddListener(UpdateRulesText);
+    }
+
+    private void OnAddUniverseButtonClicked()
+    {
+        if (SimulationManager.Instance.GetSimulationFromName(_simulationNameInput.text) != null)
         {
-            _manager.ToggleRunning();
-            UpdatePlayPauseText();
-        });
+            Debug.LogError("A universe with this name already exists");
+            return;
+        }
 
-        stepBtn.onClick.AddListener(_manager.StepOnce);
-        randomBtn.onClick.AddListener(_manager.RandomiseAllTheSame);
-        clearBtn.onClick.AddListener(_manager.ClearActive);
-
-        addSimBtn.onClick.AddListener(AddNewSimulation);
-        removeSimBtn.onClick.AddListener(RemoveCurrentSimulation);
-
-        ruleInput.onEndEdit.AddListener(_manager.UpdateRuleForActive);
-
-        UpdatePlayPauseText();
+        SimulationManager.Instance.AddSimulation(_simulationNameInput.text, GenerateRuleString());
     }
 
-    private void AddNewSimulation()
+    private void OnDeleteUniverseButtonClicked()
     {
-        string name = nameInput.text;
-        string rule = string.IsNullOrEmpty(ruleInput.text) ? "B3/S23" : ruleInput.text;
-        _manager.AddSimulation(name, rule);
+        SimulationManager.Instance.RemoveSimulation(_activeSimulationId);
     }
 
-    private void RemoveCurrentSimulation()
+    private void OnUpdateUniverseButtonClicked()
     {
-        _manager.RemoveSimulation(_manager.ActiveIndex);
+
     }
 
-    private void UpdatePlayPauseText()
+    private void OnActiveSimulationChanged(int index)
     {
-        // Note: You might want to check if running via a getter in Manager
-        // For now, we assume it's paused if we don't know. 
-        // Ideally, add a public bool IsRunning to SimulationManager.
+        SimulationInstance sim = SimulationManager.Instance.GetSimulationFromId(index);
+
+        _activeSimulationId = sim.Id;
+        _simulationNameInput.text = sim.Name;
+
+        ApplyRuleStringToCheckboxes(sim.RuleString);
+    }
+
+    private void ApplyRuleStringToCheckboxes(string ruleString)
+    {
+        // Reset all checkboxes first
+        foreach (var toggle in _birthToggles) toggle.isOn = false;
+        foreach (var toggle in _survivalToggles) toggle.isOn = false;
+
+        // Parse "B3/S23" format
+        string[] parts = ruleString.Split('/');
+
+        foreach (string part in parts)
+        {
+            if (part.Length < 2) continue;
+
+            char type = part[0];
+            var toggles = type == 'B' ? _birthToggles :
+                          type == 'S' ? _survivalToggles : null;
+
+            if (toggles == null) continue;
+
+            // Check each digit in the rule string
+            for (int i = 1; i < part.Length; i++)
+            {
+                if (char.IsDigit(part[i]))
+                {
+                    int index = part[i] - '0';
+                    if (index >= 0 && index < toggles.Length)
+                    {
+                        toggles[index].isOn = true;
+                    }
+                }
+            }
+        }
+    }
+
+    private string GenerateRuleString()
+    {
+        string B = "";
+        string S = "";
+
+        for (int i = 0; i < 9; i++)
+        {
+            if (_birthToggles[i].isOn) B += i;
+            if (_survivalToggles[i].isOn) S += i;
+        }
+
+        return $"B{B}/S{S}";
+    }
+
+    private void UpdateRulesText(bool on)
+    {
+        _rulesText.text = "Rules: " + GenerateRuleString();
     }
 }
