@@ -1,23 +1,28 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 public class SimulationManager : MonoBehaviour
 {
-    [Header("Defaults")]
-    public int defaultWidth = 50;
-    public int defaultHeight = 50;
-    public float stepSpeed = 0.5f;
-
     public static SimulationManager Instance;
 
-    private List<SimulationInstance> _simulations = new List<SimulationInstance>();
-    public int ActiveIndex = 0;
+    public event Action<SimulationInstance> OnActiveSimulationChanged;
+
+    [Header("Defaults")]
+    [SerializeField] private int _defaultWidth = 50;
+    [SerializeField] private int _defaultHeight = 50;
+    [SerializeField] private float _stepSpeed = 0.5f;
 
     // Layout settings
-    public int GridPadding = 10; // Space between universes
+    [SerializeField] private int _gridPadding = 10; // Space between universes
     [SerializeField] private Color32 _aliveColour = Color.white;
     [SerializeField] private Color32 _deadColour = Color.black;
+    [SerializeField] private Color32 _activeBorderColour = Color.yellow;
     [SerializeField] private Transform _uiControlPanel;
+
+    private List<SimulationInstance> _simulations = new List<SimulationInstance>();
+    private int _activeIndex = 0;
+    public int ActiveIndex => _activeIndex;
 
     private Camera _mainCamera;
     private bool _isRunning = false;
@@ -26,18 +31,9 @@ public class SimulationManager : MonoBehaviour
     private int _lastScreenHeight;
     private float _uiPanelWidthRatio;
 
-
-    void Awake()
+    private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance == null) Instance = this;
 
         _mainCamera = Camera.main;
         if (_mainCamera == null) _mainCamera = Camera.main;
@@ -45,7 +41,7 @@ public class SimulationManager : MonoBehaviour
         RecalculateUIRatio();
     }
 
-    void Start()
+    private void Start()
     {
         // listen for a mouse click
         InputManager.Instance.OnCellLeftClicked += OnLeftClick;
@@ -54,7 +50,7 @@ public class SimulationManager : MonoBehaviour
         UpdateLayout();
     }
 
-    void Update()
+    private void Update()
     {
         if (Screen.width != _lastScreenWidth || Screen.height != _lastScreenHeight)
         {
@@ -65,7 +61,7 @@ public class SimulationManager : MonoBehaviour
             UpdateLayout();
         }
 
-        if (_isRunning && Time.time - _lastTime >= stepSpeed)
+        if (_isRunning && Time.time - _lastTime >= _stepSpeed)
         {
             foreach (var sim in _simulations)
             {
@@ -73,6 +69,11 @@ public class SimulationManager : MonoBehaviour
             }
             _lastTime = Time.time;
         }
+    }
+
+    private void OnDestroy()
+    {
+        InputManager.Instance.OnCellLeftClicked -= OnLeftClick;
     }
 
     private void RecalculateUIRatio()
@@ -94,18 +95,10 @@ public class SimulationManager : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(name)) name = "Universe " + (_simulations.Count + 1);
 
-        var newSim = new SimulationInstance(_simulations.Count, name, defaultWidth, defaultHeight, ruleString, _aliveColour, _deadColour);
+        var newSim = new SimulationInstance(_simulations.Count, name, _defaultWidth, _defaultHeight, ruleString, _aliveColour, _deadColour, _activeBorderColour);
         _simulations.Add(newSim);
 
-        // Create a GameObject for this simulation to hold the SpriteRenderer
-        GameObject obj = new GameObject(name);
-        obj.transform.SetParent(transform);
-        newSim.SpriteRenderer = obj.AddComponent<SpriteRenderer>();
-        newSim.SpriteRenderer.sprite = newSim.Sprite;
-        newSim.SpriteRenderer.sortingOrder = 1; // Below UI
-
-        // Set initial position
-        newSim.SpriteRenderer.transform.localPosition = Vector3.zero;
+        newSim.SetupSpriteRenderer(transform);
 
         SetActive(_simulations.Count - 1);
         UpdateLayout();
@@ -127,7 +120,7 @@ public class SimulationManager : MonoBehaviour
         {
             AddSimulation("Empty", "B3/S23");
         }
-        else if (ActiveIndex >= _simulations.Count)
+        else if (_activeIndex >= _simulations.Count)
         {
             SetActive(index - 1);
         }
@@ -135,21 +128,21 @@ public class SimulationManager : MonoBehaviour
         UpdateLayout();
     }
 
-    public void SetActive(int index)
+    private void SetActive(int index)
     {
         if (index < 0 || index >= _simulations.Count) return;
 
         // Deselect previous
-        if (ActiveIndex >= 0 && ActiveIndex < _simulations.Count)
+        if (_activeIndex >= 0 && _activeIndex < _simulations.Count)
         {
-            _simulations[ActiveIndex].IsSelected = false;
-            _simulations[ActiveIndex].Render(); // Re-render to remove border
+            _simulations[_activeIndex].SetSelected(false);
         }
 
         // Select new
-        ActiveIndex = index;
-        _simulations[ActiveIndex].IsSelected = true;
-        _simulations[ActiveIndex].Render(); // Re-render to add border
+        _activeIndex = index;
+        _simulations[_activeIndex].SetSelected(true);
+
+        OnActiveSimulationChanged?.Invoke(_simulations[index]);
     }
 
     public void ToggleRunning()
@@ -164,9 +157,9 @@ public class SimulationManager : MonoBehaviour
 
     public void RandomiseActive()
     {
-        if (ActiveIndex >= 0 && ActiveIndex < _simulations.Count)
+        if (_activeIndex >= 0 && _activeIndex < _simulations.Count)
         {
-            _simulations[ActiveIndex].Randomise();
+            _simulations[_activeIndex].Randomise();
         }
     }
 
@@ -180,13 +173,13 @@ public class SimulationManager : MonoBehaviour
 
     public void RandomiseAllTheSame()
     {
-        if (_simulations.Count == 0 || ActiveIndex > _simulations.Count) return;
+        if (_simulations.Count == 0 || _activeIndex > _simulations.Count) return;
 
         _isRunning = false;
 
-        _simulations[ActiveIndex].Randomise();
+        _simulations[_activeIndex].Randomise();
 
-        byte[] randomed = _simulations[ActiveIndex].GetCells();
+        byte[] randomed = _simulations[_activeIndex].GetCells();
 
         foreach (SimulationInstance sim in _simulations)
             sim.SetAllCells(randomed);
@@ -195,8 +188,8 @@ public class SimulationManager : MonoBehaviour
 
     public void ClearActive()
     {
-        if (ActiveIndex >= 0 && ActiveIndex < _simulations.Count)
-            _simulations[ActiveIndex].Clear();
+        if (_activeIndex >= 0 && _activeIndex < _simulations.Count)
+            _simulations[_activeIndex].Clear();
     }
 
     public void ClearAll()
@@ -209,10 +202,9 @@ public class SimulationManager : MonoBehaviour
 
     public void UpdateRuleForActive(string newRule)
     {
-        if (ActiveIndex >= 0 && ActiveIndex < _simulations.Count)
+        if (_activeIndex >= 0 && _activeIndex < _simulations.Count)
         {
-            _simulations[ActiveIndex].RuleConfig.RuleString = newRule;
-            _simulations[ActiveIndex].RuleConfig.Parse();
+            _simulations[_activeIndex].SetRuleConfig(newRule);
         }
     }
 
@@ -225,8 +217,8 @@ public class SimulationManager : MonoBehaviour
         int columns = Mathf.CeilToInt(Mathf.Sqrt(_simulations.Count));
         int rows = Mathf.CeilToInt((float)_simulations.Count / columns);
 
-        int simW = _simulations[0].Data.Width + GridPadding * 2;
-        int simH = _simulations[0].Data.Height + GridPadding * 2;
+        int simW = _simulations[0].TextureWidth + _gridPadding * 2;
+        int simH = _simulations[0].TextureHeight + _gridPadding * 2;
 
         float totalWidth = columns * simW;
         float totalHeight = rows * simH;
@@ -283,7 +275,7 @@ public class SimulationManager : MonoBehaviour
         SetActive(GetSimulationAtMouse(mousePos));
     }
 
-    public int GetSimulationAtMouse(Vector2 screenPos)
+    private int GetSimulationAtMouse(Vector2 screenPos)
     {
         // Get World Position
         Vector3 worldPos = _mainCamera.ScreenToWorldPoint(screenPos);
@@ -307,34 +299,18 @@ public class SimulationManager : MonoBehaviour
                 float relY = worldPos.y - localPos.y;
 
                 // Map to grid (0 to Width-1)
-                int gx = Mathf.FloorToInt((relX + halfW) / sim.TextureWidth * sim.Data.Width);
-                int gy = Mathf.FloorToInt((relY + halfH) / sim.TextureHeight * sim.Data.Height);
+                int gx = Mathf.FloorToInt((relX + halfW) / sim.TextureWidth * sim.DataWidth);
+                int gy = Mathf.FloorToInt((relY + halfH) / sim.TextureHeight * sim.DataHeight);
 
                 // Flip Y for texture coordinate
-                gy = sim.Data.Height - 1 - gy;
+                gy = sim.DataHeight - 1 - gy;
 
-                if (sim.Topology.Contains(gx, gy))
+                if (sim.TopologyContains(gx, gy))
                 {
                     return sim.Id;
                 }
             }
         }
         return -1;
-    }
-
-    void OnDrawGizmosSelected()
-    {
-        if (_mainCamera == null) return;
-
-        Gizmos.color = Color.cyan;
-        float halfH = _mainCamera.orthographicSize;
-        float halfW = halfH * _mainCamera.aspect;
-
-        // Effective viewport (excluding UI panel)
-        Gizmos.color = Color.green;
-        float effHalfW = halfW * (1.0f - _uiPanelWidthRatio);
-        Vector3 effCenter = _mainCamera.transform.position
-                          - new Vector3(halfW * _uiPanelWidthRatio, 0, 0);
-        Gizmos.DrawWireCube(effCenter, new Vector3(effHalfW * 2, halfH * 2, 0));
     }
 }

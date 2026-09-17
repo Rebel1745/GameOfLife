@@ -633,17 +633,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c633c5c7bd40fc4c940c106936a75ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimulationManager
-  defaultWidth: 50
-  defaultHeight: 50
-  stepSpeed: 0.1
-  ActiveIndex: 0
-  GridPadding: 5
+  _defaultWidth: 50
+  _defaultHeight: 50
+  _stepSpeed: 0.1
+  _gridPadding: 5
   _aliveColour:
     serializedVersion: 2
     rgba: 4294967295
   _deadColour:
     serializedVersion: 2
     rgba: 4278190080
+  _activeBorderColour:
+    serializedVersion: 2
+    rgba: 4278512639
   _uiControlPanel: {fileID: 1923147896}
 --- !u!1 &312016498
 GameObject:

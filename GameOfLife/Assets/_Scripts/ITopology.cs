@@ -1,5 +1,5 @@
 public interface ITopology
 {
-    int GetNeighbours(int x, int y, int[] outputBuffer);
-    bool Contains(int x, int y);
+    public int GetNeighbours(int x, int y, int[] outputBuffer);
+    public bool Contains(int x, int y);
 }
