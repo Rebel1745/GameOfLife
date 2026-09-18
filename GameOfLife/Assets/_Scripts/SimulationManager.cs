@@ -15,18 +15,18 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private float _stepSpeed = 0.5f;
 
     // Layout settings
-    [SerializeField] private int _gridPadding = 10; // Space between universes
+    [SerializeField] private int _gridPaddingX = 5;
+    [SerializeField] private int _gridPaddingY = 10;
     [SerializeField] private Color32 _aliveColour = Color.white;
     [SerializeField] private Color32 _deadColour = Color.black;
     [SerializeField] private Color32 _activeBorderColour = Color.yellow;
     [SerializeField] private Transform _uiControlPanel;
 
     private List<SimulationInstance> _simulations = new List<SimulationInstance>();
-    private int _activeIndex = 0;
+    private int _activeIndex = -1;
     public int ActiveIndex => _activeIndex;
 
     private Camera _mainCamera;
-    private bool _isRunning = false;
     private float _lastTime;
     private int _lastScreenWidth;
     private int _lastScreenHeight;
@@ -61,7 +61,7 @@ public class SimulationManager : MonoBehaviour
             UpdateLayout();
         }
 
-        if (_isRunning && Time.time - _lastTime >= _stepSpeed)
+        if (Time.time - _lastTime >= _stepSpeed)
         {
             foreach (var sim in _simulations)
             {
@@ -110,14 +110,13 @@ public class SimulationManager : MonoBehaviour
 
         SetActive(_simulations.Count - 1);
         UpdateLayout();
-
-        foreach (SimulationInstance sim in _simulations)
-            Debug.Log(sim.Name + " " + sim.RuleString);
     }
 
     public void RemoveSimulation(int index)
     {
         if (index < 0 || index >= _simulations.Count) return;
+
+        _activeIndex = -1;
 
         // Destroy the GameObject
         if (_simulations[index].SpriteRenderer != null)
@@ -131,7 +130,7 @@ public class SimulationManager : MonoBehaviour
         {
             AddSimulation("Universe 1", "B3/S23");
         }
-        else if (_activeIndex >= _simulations.Count)
+        else if (_activeIndex <= _simulations.Count)
         {
             SetActive(index - 1);
         }
@@ -139,9 +138,17 @@ public class SimulationManager : MonoBehaviour
         UpdateLayout();
     }
 
+    public void UpdateSimulation(string name, string rules)
+    {
+        _simulations[_activeIndex].SetName(name);
+        _simulations[_activeIndex].SetRuleConfig(rules);
+    }
+
     private void SetActive(int index)
     {
         if (index < 0 || index >= _simulations.Count) return;
+
+        int currentIndex = _activeIndex;
 
         // Deselect previous
         if (_activeIndex >= 0 && _activeIndex < _simulations.Count)
@@ -153,17 +160,29 @@ public class SimulationManager : MonoBehaviour
         _activeIndex = index;
         _simulations[_activeIndex].SetSelected(true);
 
-        OnActiveSimulationChanged?.Invoke(index);
+        if (currentIndex != index)
+            OnActiveSimulationChanged?.Invoke(index);
     }
 
-    public void ToggleRunning()
+    public void ToggleActiveRunning()
     {
-        _isRunning = !_isRunning;
+        _simulations[_activeIndex].ToggleIsRunning();
     }
 
-    public void StepOnce()
+    public void ToggleAllRunning()
     {
-        foreach (var sim in _simulations) sim.Step();
+        foreach (SimulationInstance sim in _simulations)
+            sim.ToggleIsRunning();
+    }
+
+    public void StepAll()
+    {
+        foreach (SimulationInstance sim in _simulations) sim.Step(true);
+    }
+
+    public void StepActive()
+    {
+        _simulations[_activeIndex].Step(true);
     }
 
     public void RandomiseActive()
@@ -176,17 +195,13 @@ public class SimulationManager : MonoBehaviour
 
     public void RandomiseAllDifferent()
     {
-        _isRunning = false;
-
         foreach (SimulationInstance sim in _simulations)
             sim.Randomise();
     }
 
-    public void RandomiseAllTheSame()
+    public void RandomiseAllSame()
     {
         if (_simulations.Count == 0 || _activeIndex > _simulations.Count) return;
-
-        _isRunning = false;
 
         _simulations[_activeIndex].Randomise();
 
@@ -205,8 +220,6 @@ public class SimulationManager : MonoBehaviour
 
     public void ClearAll()
     {
-        _isRunning = false;
-
         foreach (SimulationInstance sim in _simulations)
             sim.Clear();
     }
@@ -228,8 +241,8 @@ public class SimulationManager : MonoBehaviour
         int columns = Mathf.CeilToInt(Mathf.Sqrt(_simulations.Count));
         int rows = Mathf.CeilToInt((float)_simulations.Count / columns);
 
-        int simW = _simulations[0].TextureWidth + _gridPadding * 2;
-        int simH = _simulations[0].TextureHeight + _gridPadding * 2;
+        int simW = _simulations[0].TextureWidth + _gridPaddingX * 2;
+        int simH = _simulations[0].TextureHeight + _gridPaddingY * 2;
 
         float totalWidth = columns * simW;
         float totalHeight = rows * simH;
@@ -332,10 +345,10 @@ public class SimulationManager : MonoBehaviour
         return null;
     }
 
-    public SimulationInstance GetSimulationFromName(string name)
+    public SimulationInstance GetSimulationFromName(string name, int ignore = -1)
     {
         foreach (SimulationInstance sim in _simulations)
-            if (sim.Name == name) return sim;
+            if (sim.Name == name && sim.Id != ignore) return sim;
 
         return null;
     }

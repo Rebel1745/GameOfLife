@@ -18,8 +18,9 @@ public class InputManager : MonoBehaviour
     public event Action<Vector2> OnCellLeftClicked;
     public event Action<Vector2> OnCellRightClicked;
 
-    private bool _isLeftClickHeld = false;
-    private bool _isRightClickHeld = false;
+    // these are not used at the moment as painting is not implemented
+    // private bool _isLeftClickHeld = false;
+    // private bool _isRightClickHeld = false;
 
     private GameInput _inputActions; // This is the generated class from your Asset
 
@@ -43,7 +44,7 @@ public class InputManager : MonoBehaviour
         _inputActions.Gameplay.Clear.performed += ctx => OnClearRequested?.Invoke();
         _inputActions.Gameplay.Step.performed += ctx => OnStepRequested?.Invoke();
 
-        _inputActions.Gameplay.LeftClick.performed += ctx => OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
+        _inputActions.Gameplay.LeftClick.started += ctx => OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
 
         // _inputActions.Gameplay.LeftClick.started += ctx => _isLeftClickHeld = true;
         // _inputActions.Gameplay.LeftClick.canceled += ctx => _isLeftClickHeld = false;

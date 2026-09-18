@@ -15,15 +15,46 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button _deleteUniverseButton;
     [SerializeField] private Button _updateUniverseButton;
 
+    [Header("Randomise Buttons")]
+    [SerializeField] private Button _randomiseActiveButton;
+    [SerializeField] private Button _randomiseAllSameButton;
+    [SerializeField] private Button _randomiseAllDifferentButton;
+
+    [Header("Clear Buttons")]
+    [SerializeField] private Button _clearActiveButton;
+    [SerializeField] private Button _clearAllButton;
+
+    [Header("Step Buttons")]
+    [SerializeField] private Button _stepActiveButton;
+    [SerializeField] private Button _stepAllButton;
+
+    [Header("Toggle Buttons")]
+    [SerializeField] private Button _toggleActiveButton;
+    [SerializeField] private Button _toggleAllButton;
+
+
     private int _activeSimulationId;
 
     private void Start()
     {
         SimulationManager.Instance.OnActiveSimulationChanged += OnActiveSimulationChanged;
 
-        _addUniverseButton.onClick.AddListener(OnAddUniverseButtonClicked);
-        _deleteUniverseButton.onClick.AddListener(OnDeleteUniverseButtonClicked);
-        _updateUniverseButton.onClick.AddListener(OnUpdateUniverseButtonClicked);
+        _addUniverseButton.onClick.AddListener(OnAddUniverseClicked);
+        _deleteUniverseButton.onClick.AddListener(OnDeleteUniverseClicked);
+        _updateUniverseButton.onClick.AddListener(OnUpdateUniverseClicked);
+
+        _randomiseActiveButton.onClick.AddListener(OnRandomiseActiveClicked);
+        _randomiseAllSameButton.onClick.AddListener(OnRandomiseAllSameClicked);
+        _randomiseAllDifferentButton.onClick.AddListener(OnRandomiseAllDifferentClicked);
+
+        _clearActiveButton.onClick.AddListener(OnClearActiveClicked);
+        _clearAllButton.onClick.AddListener(OnClearAllClicked);
+
+        _stepActiveButton.onClick.AddListener(OnStepActiveClicked);
+        _stepAllButton.onClick.AddListener(OnStepAllClicked);
+
+        _toggleActiveButton.onClick.AddListener(OnToggleActiveClicked);
+        _toggleAllButton.onClick.AddListener(OnToggleAllClicked);
 
         foreach (Toggle t in _birthToggles)
             t.onValueChanged.AddListener(UpdateRulesText);
@@ -31,7 +62,7 @@ public class UIManager : MonoBehaviour
             t.onValueChanged.AddListener(UpdateRulesText);
     }
 
-    private void OnAddUniverseButtonClicked()
+    private void OnAddUniverseClicked()
     {
         if (SimulationManager.Instance.GetSimulationFromName(_simulationNameInput.text) != null)
         {
@@ -42,14 +73,65 @@ public class UIManager : MonoBehaviour
         SimulationManager.Instance.AddSimulation(_simulationNameInput.text, GenerateRuleString());
     }
 
-    private void OnDeleteUniverseButtonClicked()
+    private void OnDeleteUniverseClicked()
     {
         SimulationManager.Instance.RemoveSimulation(_activeSimulationId);
     }
 
-    private void OnUpdateUniverseButtonClicked()
+    private void OnUpdateUniverseClicked()
     {
+        if (SimulationManager.Instance.GetSimulationFromName(_simulationNameInput.text, _activeSimulationId) != null)
+        {
+            Debug.LogError("A universe with this name already exists");
+            return;
+        }
 
+        SimulationManager.Instance.UpdateSimulation(_simulationNameInput.text, GenerateRuleString());
+    }
+
+    private void OnRandomiseActiveClicked()
+    {
+        SimulationManager.Instance.RandomiseActive();
+    }
+
+    private void OnRandomiseAllSameClicked()
+    {
+        SimulationManager.Instance.RandomiseAllSame();
+    }
+
+    private void OnRandomiseAllDifferentClicked()
+    {
+        SimulationManager.Instance.RandomiseAllDifferent();
+    }
+
+    private void OnClearActiveClicked()
+    {
+        SimulationManager.Instance.ClearActive();
+    }
+
+    private void OnClearAllClicked()
+    {
+        SimulationManager.Instance.ClearAll();
+    }
+
+    private void OnStepActiveClicked()
+    {
+        SimulationManager.Instance.StepActive();
+    }
+
+    private void OnStepAllClicked()
+    {
+        SimulationManager.Instance.StepAll();
+    }
+
+    private void OnToggleActiveClicked()
+    {
+        SimulationManager.Instance.ToggleActiveRunning();
+    }
+
+    private void OnToggleAllClicked()
+    {
+        SimulationManager.Instance.ToggleAllRunning();
     }
 
     private void OnActiveSimulationChanged(int index)

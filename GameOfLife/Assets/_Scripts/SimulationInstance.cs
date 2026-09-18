@@ -2,18 +2,18 @@ using UnityEngine;
 
 public class SimulationInstance
 {
-    private int _id;
+    private readonly int _id;
     public int Id => _id;
     private string _name;
     public string Name => _name;
 
-    private LifeData _data;
+    private readonly LifeData _data;
     public int DataWidth => _data.Width;
     public int DataHeight => _data.Height;
 
-    private LifeRules _rules;
-    private ITopology _topology;
-    private LifeRule _ruleConfig;
+    private readonly LifeRules _rules;
+    private readonly ITopology _topology;
+    private readonly LifeRule _ruleConfig;
     public string RuleString => _ruleConfig.RuleString;
 
     // Rendering properties
@@ -27,7 +27,8 @@ public class SimulationInstance
     private Color32[] _colorBuffer;
 
     // Visuals
-    private int _borderWidth = 1;
+    private readonly int _borderWidth = 1;
+    private bool _isRunning;
     private bool _isSelected = false;
     private Color32 _activeBorderColor;
     private Color32 _aliveColour;
@@ -85,9 +86,10 @@ public class SimulationInstance
         _sprite = Sprite.Create(_texture, new Rect(0, 0, tWidth, tHeight), new Vector2(0.5f, 0.5f), 1.0f);
     }
 
-    public void Step()
+    public void Step(bool once = false)
     {
-        Debug.Log(_ruleConfig.RuleString);
+        if (!_isRunning && !once) return;
+
         _rules.Step(_data, _topology, _ruleConfig);
         Render(); // Auto-render on step
     }
@@ -191,6 +193,8 @@ public class SimulationInstance
 
     public void Randomise()
     {
+        _isRunning = false;
+
         for (int i = 0; i < _data.Cells.Length; i++)
         {
             _data.Cells[i] = Random.value > 0.7f ? (byte)1 : (byte)0;
@@ -200,6 +204,8 @@ public class SimulationInstance
 
     public void Clear()
     {
+        _isRunning = false;
+
         System.Array.Clear(_data.Cells, 0, _data.Cells.Length);
         Render();
     }
@@ -212,7 +218,7 @@ public class SimulationInstance
 
     public void SetRuleConfig(string rule)
     {
-        if (!string.IsNullOrEmpty(rule)) _ruleConfig.RuleString = rule;
+        _ruleConfig.RuleString = rule;
         _ruleConfig.Parse();
         // UpdateLabel();
     }
@@ -226,5 +232,10 @@ public class SimulationInstance
     public bool TopologyContains(int gx, int gy)
     {
         return _topology.Contains(gx, gy);
+    }
+
+    public void ToggleIsRunning()
+    {
+        _isRunning = !_isRunning;
     }
 }
