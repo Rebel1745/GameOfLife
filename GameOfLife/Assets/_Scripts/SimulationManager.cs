@@ -98,15 +98,15 @@ public class SimulationManager : MonoBehaviour
     }
 
     // --- Public API ---
-
     public void AddSimulation(string name, string ruleString)
     {
         if (string.IsNullOrWhiteSpace(name)) name = "Universe " + (_simulations.Count + 1);
 
-        var newSim = new SimulationInstance(_simulations.Count, name, _defaultWidth, _defaultHeight, ruleString, _aliveColour, _deadColour, _activeBorderColour);
+        var newSim = new SimulationInstance(_simulations.Count, name, _defaultWidth, _defaultHeight, ruleString, _aliveColour, _deadColour, _activeBorderColour, _gridPaddingY);
         _simulations.Add(newSim);
-
-        newSim.SetupSpriteRenderer(transform);
+        //new Vector3(0, (_height / 2) + _borderWidth + (_gridSpacingY / 2f), 0)
+        newSim.InitialiseSpriteRenderer(transform);
+        newSim.InitialiseLabel();
 
         SetActive(_simulations.Count - 1);
         UpdateLayout();
