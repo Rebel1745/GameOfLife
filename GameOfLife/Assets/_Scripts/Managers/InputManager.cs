@@ -26,15 +26,7 @@ public class InputManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance == null) Instance = this;
 
         _inputActions = new GameInput();
 
@@ -45,6 +37,7 @@ public class InputManager : MonoBehaviour
         _inputActions.Gameplay.Step.performed += ctx => OnStepRequested?.Invoke();
 
         _inputActions.Gameplay.LeftClick.started += ctx => OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
+        _inputActions.Gameplay.RightClick.started += ctx => OnCellRightClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
 
         // _inputActions.Gameplay.LeftClick.started += ctx => _isLeftClickHeld = true;
         // _inputActions.Gameplay.LeftClick.canceled += ctx => _isLeftClickHeld = false;

@@ -138,10 +138,33 @@ public class UIManager : MonoBehaviour
     {
         SimulationInstance sim = SimulationManager.Instance.GetSimulationFromId(index);
 
-        _activeSimulationId = sim.Id;
-        _simulationNameInput.text = sim.Name;
+        _activeSimulationId = index;
 
-        ApplyRuleStringToCheckboxes(sim.RuleString);
+        if (index >= 0)
+        {
+            _simulationNameInput.text = sim.Name;
+
+            ApplyRuleStringToCheckboxes(sim.RuleString);
+
+            _deleteUniverseButton.gameObject.SetActive(true);
+            _updateUniverseButton.gameObject.SetActive(true);
+            _randomiseActiveButton.gameObject.SetActive(true);
+            _stepActiveButton.gameObject.SetActive(true);
+            _clearActiveButton.gameObject.SetActive(true);
+            _toggleActiveButton.gameObject.SetActive(true);
+            _randomiseActiveButton.gameObject.SetActive(true);
+        }
+        else
+        {
+            _simulationNameInput.text = "";
+            _deleteUniverseButton.gameObject.SetActive(false);
+            _updateUniverseButton.gameObject.SetActive(false);
+            _randomiseActiveButton.gameObject.SetActive(false);
+            _stepActiveButton.gameObject.SetActive(false);
+            _clearActiveButton.gameObject.SetActive(false);
+            _toggleActiveButton.gameObject.SetActive(false);
+            _randomiseActiveButton.gameObject.SetActive(false);
+        }
     }
 
     private void ApplyRuleStringToCheckboxes(string ruleString)

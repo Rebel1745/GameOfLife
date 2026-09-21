@@ -31,6 +31,7 @@ public class SimulationManager : MonoBehaviour
     private int _lastScreenWidth;
     private int _lastScreenHeight;
     private float _uiPanelWidthRatio;
+    private float _singleSimOrthographicSize;
 
     private void Awake()
     {
@@ -46,6 +47,7 @@ public class SimulationManager : MonoBehaviour
     {
         // listen for a mouse click
         InputManager.Instance.OnCellLeftClicked += OnLeftClick;
+        InputManager.Instance.OnCellRightClicked += OnRightClick;
 
         StartCoroutine(AddInitialUniverse());
     }
@@ -74,6 +76,7 @@ public class SimulationManager : MonoBehaviour
     private void OnDestroy()
     {
         InputManager.Instance.OnCellLeftClicked -= OnLeftClick;
+        InputManager.Instance.OnCellRightClicked -= OnRightClick;
     }
 
     private IEnumerator AddInitialUniverse()
@@ -146,9 +149,10 @@ public class SimulationManager : MonoBehaviour
 
     private void SetActive(int index)
     {
-        if (index < 0 || index >= _simulations.Count) return;
-
         int currentIndex = _activeIndex;
+
+        if (index == -1)
+            UpdateLayout();
 
         // Deselect previous
         if (_activeIndex >= 0 && _activeIndex < _simulations.Count)
@@ -156,12 +160,16 @@ public class SimulationManager : MonoBehaviour
             _simulations[_activeIndex].SetSelected(false);
         }
 
-        // Select new
         _activeIndex = index;
-        _simulations[_activeIndex].SetSelected(true);
+
+        // Select new
+        if (index >= 0 && index < _simulations.Count)
+            _simulations[_activeIndex].SetSelected(true);
 
         if (currentIndex != index)
             OnActiveSimulationChanged?.Invoke(index);
+        else if (index >= 0)
+            FocusOnActiveSimulation();
     }
 
     public void ToggleActiveRunning()
@@ -203,9 +211,9 @@ public class SimulationManager : MonoBehaviour
     {
         if (_simulations.Count == 0 || _activeIndex > _simulations.Count) return;
 
-        _simulations[_activeIndex].Randomise();
+        _simulations[0].Randomise();
 
-        byte[] randomed = _simulations[_activeIndex].GetCells();
+        byte[] randomed = _simulations[0].GetCells();
 
         foreach (SimulationInstance sim in _simulations)
             sim.SetAllCells(randomed);
@@ -290,13 +298,34 @@ public class SimulationManager : MonoBehaviour
             sim.SpriteRenderer.transform.localPosition = new Vector3(x, y, 0);
             index++;
         }
+
+        // if we only have one simulation, save the variables for the camera so we can set them when we focus on a single simulation later
+        if (_simulations.Count == 1)
+        {
+            _singleSimOrthographicSize = targetOrthoSize;
+        }
+    }
+
+    private void FocusOnActiveSimulation()
+    {
+        // get the position of the active simulation
+        SimulationInstance sim = _simulations[_activeIndex];
+        _mainCamera.transform.position = new(sim.SpriteRenderer.transform.localPosition.x * (1.0f - _uiPanelWidthRatio), sim.SpriteRenderer.transform.localPosition.y, _mainCamera.transform.position.z);
+        _mainCamera.orthographicSize = _singleSimOrthographicSize;
     }
 
     // --- Interaction ---
 
     private void OnLeftClick(Vector2 mousePos)
     {
-        SetActive(GetSimulationAtMouse(mousePos));
+
+        if (_uiControlPanel == null || !RectTransformUtility.RectangleContainsScreenPoint(_uiControlPanel.GetComponent<RectTransform>(), mousePos))
+            SetActive(GetSimulationAtMouse(mousePos));
+    }
+
+    private void OnRightClick(Vector2 mousePos)
+    {
+        SetActive(-1);
     }
 
     private int GetSimulationAtMouse(Vector2 screenPos)
