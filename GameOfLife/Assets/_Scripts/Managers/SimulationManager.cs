@@ -21,6 +21,8 @@ public class SimulationManager : MonoBehaviour
     [SerializeField] private Color32 _deadColour = Color.black;
     [SerializeField] private Color32 _activeBorderColour = Color.yellow;
     [SerializeField] private Transform _uiControlPanel;
+    private int _columns;
+    private int _rows;
 
     private List<SimulationInstance> _simulations = new List<SimulationInstance>();
     private int _activeIndex = -1;
@@ -32,6 +34,7 @@ public class SimulationManager : MonoBehaviour
     private int _lastScreenHeight;
     private float _uiPanelWidthRatio;
     private float _singleSimOrthographicSize;
+    private bool _isZoomedIn = false;
 
     private void Awake()
     {
@@ -48,6 +51,7 @@ public class SimulationManager : MonoBehaviour
         // listen for a mouse click
         InputManager.Instance.OnCellLeftClicked += OnLeftClick;
         InputManager.Instance.OnCellRightClicked += OnRightClick;
+        InputManager.Instance.OnNavigationInputChanged += OnNavigationInputChanged;
 
         StartCoroutine(AddInitialUniverse());
     }
@@ -245,15 +249,17 @@ public class SimulationManager : MonoBehaviour
     {
         if (_simulations.Count == 0) return;
 
+        _isZoomedIn = false;
+
         // --- 1. Calculate Grid Dimensions (Content + Gaps) ---
-        int columns = Mathf.CeilToInt(Mathf.Sqrt(_simulations.Count));
-        int rows = Mathf.CeilToInt((float)_simulations.Count / columns);
+        _columns = Mathf.CeilToInt(Mathf.Sqrt(_simulations.Count));
+        _rows = Mathf.CeilToInt((float)_simulations.Count / _columns);
 
         int simW = _simulations[0].TextureWidth + _gridPaddingX * 2;
         int simH = _simulations[0].TextureHeight + _gridPaddingY * 2;
 
-        float totalWidth = columns * simW;
-        float totalHeight = rows * simH;
+        float totalWidth = _columns * simW;
+        float totalHeight = _rows * simH;
 
         // --- 2. Calculate Camera Zoom (Fit into Effective Viewport) ---
 
@@ -289,8 +295,8 @@ public class SimulationManager : MonoBehaviour
         int index = 0;
         foreach (var sim in _simulations)
         {
-            int col = index % columns;
-            int row = index / columns;
+            int col = index % _columns;
+            int row = index / _columns;
 
             float x = startX + (col * simW);
             float y = startY + (row * simH);
@@ -308,6 +314,7 @@ public class SimulationManager : MonoBehaviour
 
     private void FocusOnActiveSimulation()
     {
+        _isZoomedIn = true;
         // get the position of the active simulation
         SimulationInstance sim = _simulations[_activeIndex];
         _mainCamera.transform.position = new(sim.SpriteRenderer.transform.localPosition.x * (1.0f - _uiPanelWidthRatio), sim.SpriteRenderer.transform.localPosition.y, _mainCamera.transform.position.z);
@@ -326,6 +333,29 @@ public class SimulationManager : MonoBehaviour
     private void OnRightClick(Vector2 mousePos)
     {
         SetActive(-1);
+    }
+
+    private void OnNavigationInputChanged(Vector2 input)
+    {
+        int delta = 0;
+
+        if (Mathf.Abs(input.x) == 1f)
+            delta = input.x > 0f ? 1 : -1;
+        else if (Mathf.Abs(input.y) == 1f)
+            delta = input.y > 0f ? _rows : -_rows;
+
+        // Wrap-around at the top/bottom edges instead of jumping a full row
+        if ((delta > 0 && _activeIndex + delta > _simulations.Count - 1) ||
+            (delta < 0 && _activeIndex + delta < 0))
+            delta = delta > 0 ? 1 : -1;
+
+        int newIndex = Mathf.Clamp(_activeIndex + delta, 0, _simulations.Count - 1);
+
+        if (newIndex != _activeIndex)
+        {
+            SetActive(newIndex);
+            if (_isZoomedIn) FocusOnActiveSimulation();
+        }
     }
 
     private int GetSimulationAtMouse(Vector2 screenPos)

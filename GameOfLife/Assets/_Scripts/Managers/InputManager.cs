@@ -2,10 +2,6 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Singleton manager for Input Actions.
-/// Assumes you have an Input Action Asset named "GameInputs" that generates a class called "GameInputs".
-/// </summary>
 public class InputManager : MonoBehaviour
 {
     public static InputManager Instance;
@@ -17,12 +13,14 @@ public class InputManager : MonoBehaviour
     public event Action OnStepRequested;
     public event Action<Vector2> OnCellLeftClicked;
     public event Action<Vector2> OnCellRightClicked;
+    public event Action<Vector2> OnNavigationInputChanged;
 
     // these are not used at the moment as painting is not implemented
     // private bool _isLeftClickHeld = false;
     // private bool _isRightClickHeld = false;
 
-    private GameInput _inputActions; // This is the generated class from your Asset
+    private GameInput _inputActions;
+    private Vector2 _navigationInput;
 
     void Awake()
     {
@@ -39,6 +37,8 @@ public class InputManager : MonoBehaviour
         _inputActions.Gameplay.LeftClick.started += ctx => OnCellLeftClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
         _inputActions.Gameplay.RightClick.started += ctx => OnCellRightClicked?.Invoke(_inputActions.Gameplay.PointerPosition.ReadValue<Vector2>());
 
+        _inputActions.Gameplay.Navigation.performed += NavigationChanged;
+
         // _inputActions.Gameplay.LeftClick.started += ctx => _isLeftClickHeld = true;
         // _inputActions.Gameplay.LeftClick.canceled += ctx => _isLeftClickHeld = false;
 
@@ -46,6 +46,16 @@ public class InputManager : MonoBehaviour
         // _inputActions.Gameplay.RightClick.canceled += ctx => _isRightClickHeld = false;
 
         _inputActions.Gameplay.Enable();
+    }
+
+    private void NavigationChanged(InputAction.CallbackContext context)
+    {
+        Vector2 lastInput = _navigationInput;
+        _navigationInput = context.ReadValue<Vector2>();
+
+        if (lastInput != _navigationInput && _navigationInput != Vector2.zero)
+            OnNavigationInputChanged?.Invoke(_navigationInput);
+
     }
 
     private void Update()
